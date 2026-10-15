@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OS Anmeldung</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1d1d1b; --mut:#6b6b66; --akz:#1f4e79; --rand:#d9d9d4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --fg:#ececea; --mut:#9a9a94; --akz:#7fb0e0; --rand:#33332f; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, system-ui, sans-serif; }
+  main { max-width:420px; margin:12vh auto; padding:0 16px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p { color:var(--mut); margin:0 0 20px; }
+  input, button { width:100%; box-sizing:border-box; font:inherit; padding:12px; border-radius:8px; border:1px solid var(--rand); }
+  input { background:transparent; color:var(--fg); margin-bottom:12px; }
+  button { background:var(--akz); color:#fff; border:0; cursor:pointer; margin-bottom:8px; }
+  button.zweit { background:transparent; color:var(--fg); border:1px solid var(--rand); }
+  .karte { border:1px solid var(--rand); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .klein { font-size:13px; color:var(--mut); }
+</style>
+</head>
+<body>
+<main id="app"><p>Lade …</p></main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
+<script>
+// Zustimmungsseite fuer die OAuth-2.1-Anmeldung von Supabase Auth.
+// P01_CC1325, 15.10.2026. Ablauf: Supabase leitet mit ?authorization_id= hierher;
+// ohne Sitzung meldet sich der Nutzer per Mail-Link an (keine Selbstregistrierung),
+// dann bestaetigt oder verweigert er den Zugriff des Claude-Connectors.
+const sb = supabase.createClient(window.OS_CONFIG.url, window.OS_CONFIG.anonKey);
+const app = document.getElementById("app");
+const authId = new URLSearchParams(location.search).get("authorization_id");
+
+function zeige(html) { app.innerHTML = html; }
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function anmelden() {
+  zeige(`<h1>Anmelden</h1><p>Mail-Adresse eingeben, der Anmeldelink kommt per Mail.</p>
+    <input id="mail" type="email" autocomplete="email" placeholder="name@beispiel.de">
+    <button id="los">Link senden</button><div id="msg" class="klein"></div>`);
+  document.getElementById("los").onclick = async () => {
+    const email = document.getElementById("mail").value.trim();
+    const { error } = await sb.auth.signInWithOtp({
+      email, options: { shouldCreateUser: false, emailRedirectTo: location.href },
+    });
+    document.getElementById("msg").textContent = error ? error.message : "Link gesendet — bitte Mail öffnen.";
+  };
+}
+
+async function zustimmen() {
+  const { data, error } = await sb.auth.oauth.getAuthorizationDetails(authId);
+  if (error) return zeige(`<h1>Fehler</h1><p>${esc(error.message)}</p>`);
+  if (!data.authorization_id && data.redirect_url) { location.href = data.redirect_url; return; }
+  const scopes = String(data.scope ?? "").split(" ").filter(Boolean).map(esc).join(", ");
+  zeige(`<h1>Zugriff erlauben?</h1><p>Eine Anwendung möchte in Deinem Namen auf das OS zugreifen.</p>
+    <div class="karte"><b>${esc(data.client?.name ?? "unbekannt")}</b><br>
+      <span class="klein">Rückleitung: ${esc(data.redirect_uri)}</span><br>
+      <span class="klein">Umfang: ${scopes || "–"}</span></div>
+    <button id="ja">Erlauben</button><button id="nein" class="zweit">Ablehnen</button>`);
+  document.getElementById("ja").onclick = async () => {
+    const r = await sb.auth.oauth.approveAuthorization(authId);
+    if (r.error) return zeige(`<h1>Fehler</h1><p>${esc(r.error.message)}</p>`);
+    location.href = r.data.redirect_url;
+  };
+  document.getElementById("nein").onclick = async () => {
+    const r = await sb.auth.oauth.denyAuthorization(authId);
+    if (r.error) return zeige(`<h1>Fehler</h1><p>${esc(r.error.message)}</p>`);
+    location.href = r.data.redirect_url;
+  };
+}
+
+(async () => {
+  if (!authId) return zeige(`<h1>OS</h1><p>Diese Seite wird nur bei der Anmeldung eines Connectors geöffnet.</p>`);
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return anmelden();
+  return zustimmen();
+})();
+</script>
+</body>
+</html>
