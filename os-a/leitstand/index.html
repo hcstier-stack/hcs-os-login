@@ -103,9 +103,9 @@ $('starten').onclick=async function(){
  const r=await api('/api/start',b);meld(r.ok?'Uebergeben. Der Mac startet die Sitzung in wenigen Sekunden.':'Nicht gestartet: '+(r.grund||'?'))};
 $('codeAnfordern').onclick=async function(){
  const mail=$('mail').value.trim();if(!mail){meld('E-Mail fehlt.');return}
- const r=await sb.auth.signInWithOtp({email:mail,options:{shouldCreateUser:false}});
+ const r=await sb.auth.signInWithOtp({email:mail,options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}});
  if(r.error){meld('Code nicht gesendet: '+r.error.message);return}
- $('schritt1').hidden=true;$('schritt2').hidden=false;meld('Code ist unterwegs.')};
+ $('schritt1').hidden=true;$('schritt2').hidden=false;meld('E-Mail ist unterwegs. Oeffne den Link in der E-Mail (er bringt Dich hierher zurueck) oder gib den Code ein, falls einer in der E-Mail steht.')};
 $('codePruefen').onclick=async function(){
  const r=await sb.auth.verifyOtp({email:$('mail').value.trim(),token:$('code').value.trim(),type:'email'});
  if(r.error){meld('Code falsch: '+r.error.message);return}
@@ -115,5 +115,6 @@ async function start(){
  const s=(await sb.auth.getSession()).data.session;
  if(!s){zeigeAnmeldung();return}
  $('anmeldung').hidden=true;$('innen').hidden=false;lade();ladeStart();setInterval(lade,30000)}
+const fe=new URLSearchParams(location.hash.slice(1)).get('error_description');if(fe){meld('Anmeldung fehlgeschlagen: '+fe.replace(/\+/g,' ')+' Bitte Code neu anfordern und den neuesten Link nur einmal oeffnen.')}
 start();
 </script></body></html>
