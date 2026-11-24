@@ -18,7 +18,7 @@ button.gross{width:100%;background:var(--acc);color:#fff;border:0;font-weight:60
 button.ja.sel{background:var(--ok);color:#fff}button.nein.sel{background:var(--no);color:#fff}button.empf.sel{background:var(--acc);color:#fff}
 textarea,select,input[type=text],input[type=email]{width:100%;min-height:56px;padding:10px;border-radius:12px;border:1px solid var(--rand);background:var(--bg);margin:4px 0}
 textarea{min-height:90px}label{display:block;margin-top:10px;color:var(--mut);font-size:14px}
-#msg{position:sticky;top:0;background:var(--card);border:1px solid var(--rand);border-radius:12px;padding:10px;margin:8px 0;display:none}
+#msg{position:sticky;top:0;background:var(--card);border:1px solid var(--rand);border-radius:12px;padding:10px;margin:8px 0;display:none;max-height:22vh;overflow:auto;font-size:15px}
 [hidden]{display:none!important}
 </style></head><body>
 <h1>Leitstand</h1>
@@ -50,7 +50,7 @@ const CFG={funktion:"https://oadywakxleonlxbhepkj.supabase.co/functions/v1/antwo
 const P=new URLSearchParams(location.search),F=P.get('f')||'';
 const sb=window.supabase.createClient(CFG.url,CFG.anon,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'az-leitstand'}});
 const $=function(id){return document.getElementById(id)};
-function meld(t){const m=$('msg');m.textContent=t;m.style.display='block';window.scrollTo(0,0)}
+function meld(t){const m=$('msg');m.textContent=t+'  (antippen zum Schliessen)';m.style.display='block';m.onclick=function(){m.style.display='none'};window.scrollTo(0,0)}
 async function api(pfad,body){
  const s=(await sb.auth.getSession()).data.session;
  if(!s){zeigeAnmeldung();return {ok:false,grund:'nicht angemeldet'}}
@@ -92,7 +92,8 @@ async function lade(){
 $('alle').onclick=async function(){
  if(!karten.length){meld('Keine offenen Fragen.');return}
  const res=[];for(const f of karten){const r=await api('/api/antwort',{frage_id:f.frage_id,alle_empfehlungen:true});res.push(f.frage_id+': '+(r.ok?'ok':(r.grund||'Fehler')))}
- meld(res.join(' | '));lade()};
+ const nok=res.filter(function(x){return /: ok$/.test(x)}).length;
+ meld(nok+' von '+res.length+' angenommen'+(nok<res.length?' — nicht angenommen: '+res.filter(function(x){return !/: ok$/.test(x)}).map(function(x){return x.slice(-40)}).join(' | '):''));lade()};
 async function ladeStart(){
  const p=await api('/api/projekte'),u=await api('/api/umgebungen');
  const sp=$('projekt');sp.textContent='';(p.projekte||[]).forEach(function(n){sp.append(h('option',{value:n,textContent:n}))});
