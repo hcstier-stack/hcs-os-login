@@ -25,7 +25,7 @@ textarea{min-height:90px}label{display:block;margin-top:10px;color:var(--mut);fo
 <div id="msg"></div>
 <div id="anmeldung" class="card" hidden>
 <div id="schritt1"><label>E-Mail</label><input type="email" id="mail" autocomplete="email" autocapitalize="off">
-<button class="gross" id="codeAnfordern">Code anfordern</button></div>
+<button class="gross" id="codeAnfordern">Anmeldelink anfordern</button></div>
 <div id="schritt2" hidden><label>Code aus der E-Mail</label><input type="text" id="code" inputmode="numeric" autocomplete="one-time-code">
 <button class="gross" id="codePruefen">Anmelden</button></div>
 </div>
@@ -105,7 +105,7 @@ $('codeAnfordern').onclick=async function(){
  const mail=$('mail').value.trim();if(!mail){meld('E-Mail fehlt.');return}
  const r=await sb.auth.signInWithOtp({email:mail,options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}});
  if(r.error){meld('Code nicht gesendet: '+r.error.message);return}
- $('schritt1').hidden=true;$('schritt2').hidden=false;meld('E-Mail ist unterwegs. Oeffne den Link in der E-Mail (er bringt Dich hierher zurueck) oder gib den Code ein, falls einer in der E-Mail steht.')};
+ meld('E-Mail mit Anmeldelink ist unterwegs. Oeffne den Link in der E-Mail genau einmal; er bringt Dich hierher zurueck und meldet Dich an.')};
 $('codePruefen').onclick=async function(){
  const r=await sb.auth.verifyOtp({email:$('mail').value.trim(),token:$('code').value.trim(),type:'email'});
  if(r.error){meld('Code falsch: '+r.error.message);return}
@@ -115,6 +115,6 @@ async function start(){
  const s=(await sb.auth.getSession()).data.session;
  if(!s){zeigeAnmeldung();return}
  $('anmeldung').hidden=true;$('innen').hidden=false;lade();ladeStart();setInterval(lade,30000)}
-const fe=new URLSearchParams(location.hash.slice(1)).get('error_description');if(fe){meld('Anmeldung fehlgeschlagen: '+fe.replace(/\+/g,' ')+' Bitte Code neu anfordern und den neuesten Link nur einmal oeffnen.')}
+const fe=new URLSearchParams(location.hash.slice(1)).get('error_description');if(fe){meld('Anmeldung fehlgeschlagen: '+fe.replace(/\+/g,' ')+' Bitte einen neuen Anmeldelink anfordern und den neuesten Link nur einmal oeffnen.')}
 start();
 </script></body></html>
